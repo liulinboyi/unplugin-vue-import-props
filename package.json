@@ -12,6 +12,14 @@
   ],
   "license": "MIT",
   "author": "liulinboyi <xiaoliumail@foxmail.com>",
+  "homepage": "https://github.com/liulinboyi/unplugin-vue-import-props",
+  "bugs": {
+    "url": "https://github.com/liulinboyi/unplugin-vue-import-props/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liulinboyi/unplugin-vue-import-props.git"
+  },
   "files": [
     "dist"
   ],
