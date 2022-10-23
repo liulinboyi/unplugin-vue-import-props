@@ -210,12 +210,9 @@ export function getGap(node, removeTypeImportCode) {
   return node.end - node.start - removeTypeImportCode.length
 }
 
-export function addINterface(s, importPropsNodeStart, scriptStart, gap, codes) {
+export function addINterface(s, definePropsNodeStart, definePropsNodeEnd, scriptStart, gap, codes) {
   const ss = new MagicString(s.toString())
-  ss.appendLeft(
-    importPropsNodeStart + scriptStart - gap,
-    `${codes}\r\n`
-  )
+  ss.overwrite(definePropsNodeStart + scriptStart - gap, definePropsNodeEnd + scriptStart - gap, `${codes}`)
   return ss
 }
 
@@ -256,26 +253,27 @@ export function replaceCode(script, code, id) {
     const body = scriptAst.body
 
     //  such as defineProps<Foo>()
-    const importPropsNode = filterMarco(body as Statement[])
-    if (!importPropsNode.length) {
+    const definePropsNode = filterMarco(body as Statement[])
+    if (!definePropsNode.length) {
       return doNothing(code, id)
     }
-    if (importPropsNode.length > 1) {
+    if (definePropsNode.length > 1) {
       console.warn(`${DEFINE_PROPS_NAME} marco can only use one!`)
       return doNothing(code, id)
     }
-    if (!importPropsNode[0].typeParameters || !importPropsNode[0].typeParameters.params || !importPropsNode[0].typeParameters.params.length) {
+    if (!definePropsNode[0].typeParameters || !definePropsNode[0].typeParameters.params || !definePropsNode[0].typeParameters.params.length) {
       return doNothing(code, id)
     }
     const importPropsTypeParameters =
-      importPropsNode[0].typeParameters.params[0]
+      definePropsNode[0].typeParameters.params[0]
     if (importPropsTypeParameters.type !== 'TSTypeReference') {
       return doNothing(code, id)
     }
     // such as Foo
     let importPropsTypeParametersTypeNameLocal = getImportPropsTypeParametersTypeName(importPropsTypeParameters)
     // start
-    const importPropsNodeStart = importPropsNode[0].start
+    const definePropsNodeStart = definePropsNode[0].start
+    const definePropsNodeEnd = definePropsNode[0].end
     const cpath = path.dirname(id)
     const imported = body.filter(
       (n) =>
@@ -407,7 +405,7 @@ export function replaceCode(script, code, id) {
           throw new Error('import error')
         }
 
-        let codes = ''
+        let importPropsTypeNode
         if (
           (importNode.type === 'ExportNamedDeclaration' || importNode.type === 'ExportDefaultDeclaration') &&
           importNode.declaration &&
@@ -415,7 +413,7 @@ export function replaceCode(script, code, id) {
         ) {
           // importNode.declaration TSInterfaceDeclaration
           importNode.declaration.id.name = localName
-          codes = new CodeGenerator(importNode.declaration as Node, {}).generate().code
+          importPropsTypeNode = (importNode.declaration as TSInterfaceDeclaration).body
         } else {
           // such as importNode.declaration.type is TSTypeAliasDeclaration
           return doNothing(code, id)
@@ -424,7 +422,10 @@ export function replaceCode(script, code, id) {
         const removeTypeImportCode = getRemoveTypeImportCode(copyImportNode)
         const s = removeTypeImport(node, code, removeTypeImportCode, scriptStart)
         const gap = getGap(node, removeTypeImportCode)
-        const ss = addINterface(s, importPropsNodeStart, scriptStart, gap, codes)
+        definePropsNode[0].typeParameters.params.length = 0
+        definePropsNode[0].typeParameters.params.push(importPropsTypeNode)
+        let codes = new CodeGenerator(definePropsNode[0], {}).generate().code
+        const ss = addINterface(s, definePropsNodeStart, definePropsNodeEnd, scriptStart, gap, codes)
 
         afterReplace = ss.toString()
       }

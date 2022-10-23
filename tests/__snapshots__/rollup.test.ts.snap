@@ -3,10 +3,9 @@
 exports[`transform > fixtures > tests/fixtures/typescript.vue 1`] = `
 "var typescript = \`<script lang=\\"ts\\" setup>
 import { } from './index';
-interface Foo {
+defineProps<{
   name: string;
-}
-defineProps<Foo>()
+}>()
 console.log('Hello')
 </script>
 
@@ -25,10 +24,9 @@ exports[`transform > fixtures > tests/fixtures/typescript1.vue 1`] = `
 "var typescript1 = \`<script lang=\\"ts\\" setup>
 import { foo } from './index';
 foo()
-interface Foo {
+defineProps<{
   name: string;
-}
-defineProps<Foo>()
+}>()
 foo()
 console.log('Hello')
 </script>
@@ -48,10 +46,9 @@ exports[`transform > fixtures > tests/fixtures/typescript2.vue 1`] = `
 "var typescript2 = \`<script lang=\\"ts\\" setup>
 import { foo } from './index';
 foo()
-interface Test {
+defineProps<{
   age: number;
-}
-defineProps<Test>()
+}>()
 foo()
 console.log('Hello')
 </script>
@@ -71,13 +68,9 @@ exports[`transform > fixtures > tests/fixtures/typescript3.vue 1`] = `
 "var typescript3 = \`<script lang=\\"ts\\" setup>
 import { foo } from './index1';
 foo()
-interface Test {
+defineProps<{
   gender: string;
-}
-
-// don't support Subsequent property declarations
-// 不支持后续属性声明
-defineProps<Test>()
+}>()
 foo()
 console.log('Hello')
 </script>
@@ -118,13 +111,9 @@ export { typescript4 as default };
 exports[`transform > fixtures > tests/fixtures/typescript5.vue 1`] = `
 "var typescript5 = \`<script lang=\\"ts\\" setup>
 
-interface Test {
+defineProps<{
   gender: string;
-}
-
-// don't support Subsequent property declarations
-// 不支持后续属性声明
-defineProps<Test>()
+}>()
 console.log('Hello')
 </script>
 
@@ -142,10 +131,9 @@ export { typescript5 as default };
 exports[`transform > fixtures > tests/fixtures/typescript6.vue 1`] = `
 "var typescript6 = \`<script lang=\\"ts\\" setup>
 import { } from './index2';
-interface Test {
+defineProps<{
   name: string;
-}
-defineProps<Test>()
+}>()
 console.log('Hello')
 </script>
 
