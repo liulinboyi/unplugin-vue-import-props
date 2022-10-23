@@ -160,6 +160,24 @@ export { typescript6 as default };
 "
 `;
 
+exports[`transform > fixtures > tests/fixtures/typescript7.vue 1`] = `
+"var typescript7 = \`<script lang=\\"ts\\" setup>
+import { haha } from './index2'
+defineProps<haha>()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescript7 as default };
+"
+`;
+
 exports[`transform > fixtures > tests/fixtures/typescriptNormal.vue 1`] = `
 "var typescriptNormal = \`<script lang=\\"ts\\" setup>
 defineProps<{

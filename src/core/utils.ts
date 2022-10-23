@@ -219,12 +219,37 @@ export function addINterface(s, importPropsNodeStart, scriptStart, gap, codes) {
   return ss
 }
 
-export function replaceCode(children, code, id) {
+/*
+{
+  type: "script",
+  content: "\r\nimport { haha } from './index2'\r\ndefineProps<haha>()\r\nconsole.log('Hello')\r\n",
+  loc: {
+    source: "\r\nimport { haha } from './index2'\r\ndefineProps<haha>()\r\nconsole.log('Hello')\r\n",
+    start: {
+      column: 25,
+      line: 1,
+      offset: 24,
+    },
+    end: {
+      column: 1,
+      line: 5,
+      offset: 102,
+    },
+  },
+  attrs: {
+    lang: "ts",
+    setup: true,
+  },
+  lang: "ts",
+  setup: true,
+}
+*/
+export function replaceCode(script, code, id) {
   let afterReplace = ''
-  if (children[0].type === (NodeTypes.TEXT as unknown as _NodeTypes.TEXT)) {
+  if (script.type === 'script' && script.lang === 'ts' && script.setup) {
     // <script>'s offset
-    const scriptStart = children[0].loc.start.offset
-    const scriptContent = children[0].content
+    const scriptStart = script.loc.start.offset
+    const scriptContent = script.content
     const plugins: ParserPlugin[] = ['typescript']
 
     const scriptAst = parseScript(scriptContent, plugins)
@@ -391,6 +416,9 @@ export function replaceCode(children, code, id) {
           // importNode.declaration TSInterfaceDeclaration
           importNode.declaration.id.name = localName
           codes = new CodeGenerator(importNode.declaration as Node, {}).generate().code
+        } else {
+          // such as importNode.declaration.type is TSTypeAliasDeclaration
+          return doNothing(code, id)
         }
 
         const removeTypeImportCode = getRemoveTypeImportCode(copyImportNode)
@@ -410,14 +438,15 @@ export function replaceCode(children, code, id) {
 
 export const errors: (CompilerError | SyntaxError)[] = []
 export const parseSFC = (code: string, id: string) => {
-  const ast = parseSfc(code)
-  const script: ElementNode[] = traverseAst(ast)
-  if (!script.length) {
+  const ast = parse(code, {
+    filename: id,
+  })
+  const script = ast.descriptor.scriptSetup
+  if (!script) {
     return doNothing(code, id)
   }
-  const children = script[0].children
 
-  let afterReplace = replaceCode(children, code, id)
+  let afterReplace = replaceCode(script, code, id)
 
   const { descriptor } = parse(afterReplace ? afterReplace : code, {
     filename: id,
