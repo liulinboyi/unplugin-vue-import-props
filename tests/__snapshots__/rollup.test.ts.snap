@@ -1,0 +1,180 @@
+// Vitest Snapshot v1
+
+exports[`transform > fixtures > tests/fixtures/typescript.vue 1`] = `
+"var typescript = \`<script lang=\\"ts\\" setup>
+import { } from './index';
+interface Foo {
+  name: string;
+}
+defineProps<Foo>()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescript as default };
+"
+`;
+
+exports[`transform > fixtures > tests/fixtures/typescript1.vue 1`] = `
+"var typescript1 = \`<script lang=\\"ts\\" setup>
+import { foo } from './index';
+foo()
+interface Foo {
+  name: string;
+}
+defineProps<Foo>()
+foo()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescript1 as default };
+"
+`;
+
+exports[`transform > fixtures > tests/fixtures/typescript2.vue 1`] = `
+"var typescript2 = \`<script lang=\\"ts\\" setup>
+import { foo } from './index';
+foo()
+interface Test {
+  age: number;
+}
+defineProps<Test>()
+foo()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescript2 as default };
+"
+`;
+
+exports[`transform > fixtures > tests/fixtures/typescript3.vue 1`] = `
+"var typescript3 = \`<script lang=\\"ts\\" setup>
+import { foo } from './index1';
+foo()
+interface Test {
+  gender: string;
+}
+
+// don't support Subsequent property declarations
+// 不支持后续属性声明
+defineProps<Test>()
+foo()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescript3 as default };
+"
+`;
+
+exports[`transform > fixtures > tests/fixtures/typescript4.vue 1`] = `
+"var typescript4 = \`<script lang=\\"ts\\" setup>
+import Test, { foo } from './index1'
+foo()
+defineProps<{
+  name: string
+}>()
+foo()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescript4 as default };
+"
+`;
+
+exports[`transform > fixtures > tests/fixtures/typescript5.vue 1`] = `
+"var typescript5 = \`<script lang=\\"ts\\" setup>
+
+interface Test {
+  gender: string;
+}
+
+// don't support Subsequent property declarations
+// 不支持后续属性声明
+defineProps<Test>()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescript5 as default };
+"
+`;
+
+exports[`transform > fixtures > tests/fixtures/typescript6.vue 1`] = `
+"var typescript6 = \`<script lang=\\"ts\\" setup>
+import { } from './index2';
+interface Test {
+  name: string;
+}
+defineProps<Test>()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescript6 as default };
+"
+`;
+
+exports[`transform > fixtures > tests/fixtures/typescriptNormal.vue 1`] = `
+"var typescriptNormal = \`<script lang=\\"ts\\" setup>
+defineProps<{
+  name: string
+}>()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescriptNormal as default };
+"
+`;

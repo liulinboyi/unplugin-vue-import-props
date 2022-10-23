@@ -1,0 +1,13 @@
+<script lang="ts" setup>
+// don't support namespace import type
+// 不支持命名空间
+import * as Test from './index1'
+defineProps<Test.default>()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>

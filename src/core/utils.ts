@@ -1,0 +1,437 @@
+import path from 'path'
+import fs from 'fs'
+import { parse } from '@vue/compiler-sfc'
+import * as CompilerDOM from '@vue/compiler-dom'
+import { parse as _parse } from '@babel/parser'
+import { CodeGenerator } from '@babel/generator'
+import { MagicString } from './magic-string'
+import { DEFINE_PROPS_NAME } from './constants'
+import type { ParserPlugin } from '@babel/parser'
+import type {
+  ElementNode,
+  NodeTypes as _NodeTypes,
+  TextModes as _TextModes,
+} from '@vue/compiler-core'
+import type { CompilerError } from '@vue/compiler-sfc'
+import {
+  CallExpression,
+  ExportNamedDeclaration,
+  Identifier,
+  ImportDeclaration,
+  ImportSpecifier,
+  Node,
+  Statement,
+  StringLiteral,
+  TSInterfaceDeclaration,
+} from '@babel/types'
+
+export function isCallOf(
+  node: Node | null | undefined,
+  test: string | ((id: string) => boolean)
+): node is CallExpression {
+  return !!(
+    node &&
+    node.type === 'CallExpression' &&
+    node.callee.type === 'Identifier' &&
+    (typeof test === 'string'
+      ? node.callee.name === test
+      : test(node.callee.name))
+  )
+}
+
+export enum TextModes {
+  DATA = 0,
+  RCDATA = 1,
+  RAWTEXT = 2,
+  CDATA = 3,
+  ATTRIBUTE_VALUE = 4,
+}
+
+export enum NodeTypes {
+  ROOT = 0,
+  ELEMENT = 1,
+  TEXT = 2,
+  COMMENT = 3,
+  SIMPLE_EXPRESSION = 4,
+  INTERPOLATION = 5,
+  ATTRIBUTE = 6,
+  DIRECTIVE = 7,
+  COMPOUND_EXPRESSION = 8,
+  IF = 9,
+  IF_BRANCH = 10,
+  FOR = 11,
+  TEXT_CALL = 12,
+  VNODE_CALL = 13,
+  JS_CALL_EXPRESSION = 14,
+  JS_OBJECT_EXPRESSION = 15,
+  JS_PROPERTY = 16,
+  JS_ARRAY_EXPRESSION = 17,
+  JS_FUNCTION_EXPRESSION = 18,
+  JS_CONDITIONAL_EXPRESSION = 19,
+  JS_CACHE_EXPRESSION = 20,
+  JS_BLOCK_STATEMENT = 21,
+  JS_TEMPLATE_LITERAL = 22,
+  JS_IF_STATEMENT = 23,
+  JS_ASSIGNMENT_EXPRESSION = 24,
+  JS_SEQUENCE_EXPRESSION = 25,
+  JS_RETURN_STATEMENT = 26,
+}
+
+export interface ImportDeclarationInfo extends ImportDeclaration {
+  source: StringLiteral & { curPath?: string; plugins?: ParserPlugin[] }
+}
+
+export function fileExists(path: string) {
+  return fs.existsSync(path)
+}
+
+export function getFileContent(path: string) {
+  return fs.readFileSync(path).toString()
+}
+
+export const decide = (n) => n.props.reduce((p, c) => {
+  if (!p) return false
+  if (['setup', 'lang'].includes(c.name)) {
+    if (c.name === 'lang') {
+      if (
+        c.type ===
+        (NodeTypes.ATTRIBUTE as unknown as _NodeTypes.ATTRIBUTE) &&
+        c.value &&
+        c.value.content === 'ts'
+      ) {
+        return true
+      }
+      return false
+    }
+    return true
+  }
+  return false
+}, true)
+
+export function parseSfc(code) {
+  return CompilerDOM.parse(code, {
+    // there are no components at SFC parsing level
+    isNativeTag: () => true,
+    // preserve all whitespaces
+    isPreTag: () => true,
+    getTextMode: ({ tag, props }, parent) => {
+      // all top level elements except <template> are parsed as raw text
+      // containers
+      if (
+        (!parent && tag !== 'template') ||
+        // <template lang="xxx"> should also be treated as raw text
+        (tag === 'template' &&
+          props.some(
+            (p) =>
+              p.type ===
+              (NodeTypes.ATTRIBUTE as unknown as _NodeTypes.ATTRIBUTE) &&
+              p.name === 'lang' &&
+              p.value &&
+              p.value.content &&
+              p.value.content !== 'html'
+          ))
+      ) {
+        return TextModes.RAWTEXT as unknown as _TextModes.RAWTEXT
+      } else {
+        return TextModes.DATA as unknown as _TextModes.DATA
+      }
+    },
+    onError: (e) => {
+      errors.push(e)
+    },
+  })
+}
+
+export function traverseAst(ast) {
+  const script: ElementNode[] = []
+  ast.children.forEach((n) => {
+    if (n.type !== (NodeTypes.ELEMENT as unknown as _NodeTypes.ELEMENT)) {
+      return
+    }
+
+    if (
+      n.type === (NodeTypes.ELEMENT as unknown as _NodeTypes.ELEMENT) &&
+      n.tag === 'script' &&
+      n.props.length === 2 &&
+      decide(n)
+    ) {
+      script.push(n)
+    }
+  })
+  return script
+}
+
+export function parseScript(scriptContent, plugins) {
+  return _parse(scriptContent, {
+    plugins,
+    sourceType: 'module',
+  }).program
+}
+
+export function getImportPropsTypeParametersTypeName(importPropsTypeParameters) {
+  if (importPropsTypeParameters.type === 'TSTypeReference') {
+    return (
+      importPropsTypeParameters.typeName as Identifier
+    ).name
+  } else {
+    throw new Error(`must be TSTypeReference`)
+  }
+}
+
+export function doNothing(code, id) {
+  // const { descriptor } = parse(code, {
+  //   filename: id,
+  // })
+  // return descriptor
+  return
+}
+
+export function getRemoveTypeImportCode(copyImportNode) {
+  let removeTypeImportCode
+  if (copyImportNode.specifiers.length) {
+    removeTypeImportCode = new CodeGenerator(copyImportNode as Node, {}).generate().code
+  } else {
+    removeTypeImportCode = ''
+  }
+  return removeTypeImportCode
+}
+
+export function removeTypeImport(node, code, removeTypeImportCode, scriptStart) {
+  const s = new MagicString(code)
+  s.overwrite(
+    node.start + scriptStart,
+    node.end + scriptStart,
+    removeTypeImportCode
+  )
+  return s
+}
+
+export function getGap(node, removeTypeImportCode) {
+  return node.end - node.start - removeTypeImportCode.length
+}
+
+export function addINterface(s, importPropsNodeStart, scriptStart, gap, codes) {
+  const ss = new MagicString(s.toString())
+  ss.appendLeft(
+    importPropsNodeStart + scriptStart - gap,
+    `${codes}\r\n`
+  )
+  return ss
+}
+
+export function replaceCode(children, code, id) {
+  let afterReplace = ''
+  if (children[0].type === (NodeTypes.TEXT as unknown as _NodeTypes.TEXT)) {
+    // <script>'s offset
+    const scriptStart = children[0].loc.start.offset
+    const scriptContent = children[0].content
+    const plugins: ParserPlugin[] = ['typescript']
+
+    const scriptAst = parseScript(scriptContent, plugins)
+    const body = scriptAst.body
+
+    //  such as defineProps<Foo>()
+    const importPropsNode = filterMarco(body as Statement[])
+    if (!importPropsNode.length) {
+      return doNothing(code, id)
+    }
+    if (importPropsNode.length > 1) {
+      console.warn(`${DEFINE_PROPS_NAME} marco can only use one!`)
+      return doNothing(code, id)
+    }
+    if (!importPropsNode[0].typeParameters || !importPropsNode[0].typeParameters.params || !importPropsNode[0].typeParameters.params.length) {
+      return doNothing(code, id)
+    }
+    const importPropsTypeParameters =
+      importPropsNode[0].typeParameters.params[0]
+    if (importPropsTypeParameters.type !== 'TSTypeReference') {
+      return doNothing(code, id)
+    }
+    // such as Foo
+    let importPropsTypeParametersTypeNameLocal = getImportPropsTypeParametersTypeName(importPropsTypeParameters)
+    // start
+    const importPropsNodeStart = importPropsNode[0].start
+    const cpath = path.dirname(id)
+    const imported = body.filter(
+      (n) =>
+        n.type === 'ImportDeclaration' &&
+        n.specifiers.some(
+          (p) => p.local.name === importPropsTypeParametersTypeNameLocal
+        )
+    )
+    // in the definedProps<Foo>(), the Foo has one import like import { Foo } from './index'
+    if (imported.length > 1) {
+      throw new Error(
+        `in the definedProps<${importPropsTypeParametersTypeNameLocal}>(), ${importPropsTypeParametersTypeNameLocal} is double import!`
+      )
+    } else if (imported.length === 0) {
+      return doNothing(code, id)
+    }
+    const node = imported[0]
+    try {
+      const rpath = path.resolve(
+        cpath,
+        (node as ImportDeclarationInfo).source.value
+      )
+      let content
+      if (fileExists(`${rpath}.ts`)) {
+        content = getFileContent(`${rpath}.ts`)
+      } else if (fileExists(`${rpath}.d.ts`)) {
+        content = getFileContent(`${rpath}.d.ts`)
+      } else {
+        throw new Error('The import file is not exit.')
+      }
+      const result = _parse(content, {
+        plugins: [...(plugins ?? [])],
+        sourceType: 'module',
+      }).program
+      const importNodes = result.body.filter(
+        (n) => n.type === 'ExportNamedDeclaration' && n.exportKind === 'type' || n.type === 'ExportDefaultDeclaration' && n.exportKind === 'value' && (n.declaration as unknown as TSInterfaceDeclaration).type === 'TSInterfaceDeclaration'
+      )
+
+      /**
+       * interface Foo {
+       * 
+       * }
+       * 
+       * export default Foo
+       */
+      const exportDefaultIdentifier = result.body.filter(
+        (n) => n.type === 'ExportDefaultDeclaration' && n.exportKind === 'value' && (n.declaration as unknown as Identifier).type === 'Identifier'
+      )
+      if (exportDefaultIdentifier.length > 1) {
+        throw new Error(`export default must be one!`)
+      }
+
+      // import and local name are not equal, this means local name is unique so change
+      // the type defined name to local name
+      const copyImportNode: ImportDeclarationInfo = JSON.parse(JSON.stringify(node))
+      const importTypeSpecifiers = copyImportNode.specifiers.filter(
+        (p) => p.local.name === importPropsTypeParametersTypeNameLocal
+      )[0]
+      if (!importTypeSpecifiers) {
+        return doNothing(code, id)
+      }
+      // such as import { Foo as Test} from './app
+      // Foo is importedName
+      // Text is LocalName
+      const localName = importTypeSpecifiers.local.name
+      let importedName = ''
+      if (importTypeSpecifiers.type === 'ImportSpecifier') {
+        if (importTypeSpecifiers.imported.type === 'Identifier') {
+          importedName = importTypeSpecifiers.imported.name
+        }
+      }
+
+      if (importNodes.length === 0 && exportDefaultIdentifier.length === 1) {
+        const exportDefaultIdentifierName = (exportDefaultIdentifier[0] as any).declaration.name
+        const exportDefaultIdentifierValue = result.body.filter(n => n.type === 'TSInterfaceDeclaration' && n.id.name === exportDefaultIdentifierName)
+        if (exportDefaultIdentifierValue.length) {
+          /**
+           * interface Foo {
+           * }
+           * interface Foo {
+           * }
+           * export default Foo
+           * 
+           * get the first one
+           */
+          if (exportDefaultIdentifierValue.length > 1) {
+            console.warn(`don't support Subsequent property declarations, 不支持后续属性声明`)
+          }
+          (exportDefaultIdentifierValue[0] as TSInterfaceDeclaration).id.name = localName
+          importNodes.push(JSON.parse(JSON.stringify(exportDefaultIdentifier[0])));
+          (importNodes[0] as any).declaration = exportDefaultIdentifierValue[0]
+        }
+      }
+
+      let match = importNodes.filter(
+        n => importedName ?
+          (((n as ExportNamedDeclaration).declaration) as any).id.name === importedName :
+          (((n as ExportNamedDeclaration).declaration) as any).id.name === localName
+      )
+
+      if (match.length > 2) {
+        console.warn(`don't support Subsequent property declarations`)
+        console.warn(`不支持后续属性声明`)
+        match = [match[0]]
+      }
+      if (match.length) {
+        const importNode = match[0]
+
+        if (copyImportNode.specifiers.length > 1) {
+          copyImportNode.specifiers = copyImportNode.specifiers.filter(
+            (p) => p.local.name !== importPropsTypeParametersTypeNameLocal
+          )
+        } else if (copyImportNode.specifiers.length === 1) {
+          const specifier = copyImportNode.specifiers.find(
+            (p) => p.local.name === importPropsTypeParametersTypeNameLocal
+          );
+          if ((specifier as ImportSpecifier).imported) {
+            // if ('name' in ((specifier as ImportSpecifier).imported as Identifier)) {
+            ((specifier as ImportSpecifier).imported as Identifier).name = ''
+            specifier.local.name = ''
+            // }
+          } else {
+            // such as import Foo from './app
+            copyImportNode.specifiers = copyImportNode.specifiers.filter(
+              (p) => p.local.name !== importPropsTypeParametersTypeNameLocal
+            )
+          }
+        } else {
+          throw new Error('import error')
+        }
+
+        let codes = ''
+        if (
+          (importNode.type === 'ExportNamedDeclaration' || importNode.type === 'ExportDefaultDeclaration') &&
+          importNode.declaration &&
+          importNode.declaration.type === "TSInterfaceDeclaration"
+        ) {
+          // importNode.declaration TSInterfaceDeclaration
+          importNode.declaration.id.name = localName
+          codes = new CodeGenerator(importNode.declaration as Node, {}).generate().code
+        }
+
+        const removeTypeImportCode = getRemoveTypeImportCode(copyImportNode)
+        const s = removeTypeImport(node, code, removeTypeImportCode, scriptStart)
+        const gap = getGap(node, removeTypeImportCode)
+        const ss = addINterface(s, importPropsNodeStart, scriptStart, gap, codes)
+
+        afterReplace = ss.toString()
+      }
+    } catch (err: unknown) {
+      const error = (err as Error)
+      throw new Error(`${error.message} ${error.stack} ${error.name}`)
+    }
+  }
+  return afterReplace
+}
+
+export const errors: (CompilerError | SyntaxError)[] = []
+export const parseSFC = (code: string, id: string) => {
+  const ast = parseSfc(code)
+  const script: ElementNode[] = traverseAst(ast)
+  if (!script.length) {
+    return doNothing(code, id)
+  }
+  const children = script[0].children
+
+  let afterReplace = replaceCode(children, code, id)
+
+  const { descriptor } = parse(afterReplace ? afterReplace : code, {
+    filename: id,
+  })
+
+  return descriptor
+}
+
+export const filterMarco = (body: Statement[]) => {
+  return body
+    .map((raw: Node) => {
+      let node = raw
+      if (raw.type === 'ExpressionStatement') node = raw.expression
+      return isCallOf(node, DEFINE_PROPS_NAME) ? node : undefined
+    })
+    .filter((node) => !!node)
+}
