@@ -2,6 +2,8 @@
 
 Add import define props type support for Vue script-setup and lang is typescript
 
+在Vue3中使用此款插件，传递给 defineProps 的泛型参数可以是一个导入的类型
+
 ## Usage
 
 ### Basic example
@@ -26,10 +28,9 @@ export interface Test {
 ```vue
 <script setup lang="ts">
 import { } from "./app";
-interface Test {
+defineProps<{
   name: string;
-}
-defineProps<Test>();
+}>();
 </script>
 ```
 
@@ -55,10 +56,9 @@ export interface Foo {
 ```vue
 <script setup lang="ts">
 import { } from "./app";
-interface Test {
+defineProps<Test {
   name: string;
-}
-defineProps<Test>();
+}>();
 </script>
 ```
 
@@ -153,6 +153,10 @@ module.exports = {
   }
 }
 ``` 
+#### Related articles
+
+https://www.yuque.com/docs/share/4bd70f56-a3e2-4296-843c-08550288c70f?#
+
 
 Plugin Template: [unplugin-vue-macros](https://github.com/sxzz/unplugin-vue-macros)
 
