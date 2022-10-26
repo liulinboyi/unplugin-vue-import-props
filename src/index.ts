@@ -20,6 +20,12 @@ function resolveOption(options: Options): OptionsResolved {
 export default createUnplugin<Options>((options = {}) => {
   const opt = resolveOption(options)
   const filter = createFilter(opt.include, opt.exclude)
+  /*
+  {
+    @: 'D:\\openSource\\demo\\src'
+  }
+  */
+  let alias = {}
 
   const name = 'unplugin-vue-import-props'
   return {
@@ -30,9 +36,13 @@ export default createUnplugin<Options>((options = {}) => {
       return filter(id)
     },
 
+    config(config, { _command }) {
+      alias = config.resolve.alias
+    },
+
     transform(code, id) {
       try {
-        return transform(code, id)
+        return transform(code, id, alias)
       } catch (err: unknown) {
         this.error(`${name} ${err}`)
       }

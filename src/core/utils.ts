@@ -256,6 +256,23 @@ function processWithDefaults(node: Node) {
   }
 }
 
+function replaceAlias(cpath: string, alias) {
+  // alias only support start with `@` Syntax
+  const entry = Object.keys(alias).filter(n => n.startsWith('@'))
+  if (entry.length) {
+    for (let n of entry) {
+      // n such as @foo
+      // alias[n] is path
+      if (cpath.startsWith(n)) {
+        let tempPath = cpath.replace(n, '')
+        cpath = path.resolve(alias[n], path.isAbsolute(tempPath) ? `.${tempPath}` : tempPath)
+        break
+      }
+    }
+  }
+  return cpath
+}
+
 /*
 {
   type: "script",
@@ -281,7 +298,7 @@ function processWithDefaults(node: Node) {
   setup: true,
 }
 */
-export function replaceCode(script, code, id) {
+export function replaceCode(script, code, id, alias) {
   let afterReplace = ''
   if (script.type === 'script' && script.lang === 'ts' && script.setup) {
     // <script>'s offset
@@ -364,10 +381,16 @@ export function replaceCode(script, code, id) {
     }
     const node = imported[0]
     try {
-      const rpath = path.resolve(
-        cpath,
-        (node as ImportDeclarationInfo).source.value
-      )
+      let rpath = ''
+      if ((node as ImportDeclarationInfo).source.value.startsWith('@')) {
+        rpath = replaceAlias((node as ImportDeclarationInfo).source.value, alias)
+      } else {
+        rpath = path.resolve(
+          cpath,
+          (node as ImportDeclarationInfo).source.value
+        )
+      }
+
       let content
       if (fileExists(`${rpath}.ts`)) {
         content = getFileContent(`${rpath}.ts`)
@@ -520,7 +543,7 @@ export function replaceCode(script, code, id) {
 }
 
 export const errors: (CompilerError | SyntaxError)[] = []
-export const parseSFC = (code: string, id: string) => {
+export const parseSFC = (code: string, id: string, alias: { [x: string]: string }) => {
   const ast = parse(code, {
     filename: id,
   })
@@ -529,7 +552,7 @@ export const parseSFC = (code: string, id: string) => {
     return doNothing(code, id)
   }
 
-  let afterReplace = replaceCode(script, code, id)
+  let afterReplace = replaceCode(script, code, id, alias)
 
   const { descriptor } = parse(afterReplace ? afterReplace : code, {
     filename: id,
