@@ -74,10 +74,10 @@
     "@vue/compiler-dom": "^3.2.40",
     "unplugin": "^0.7.2",
     "@babel/generator": "^7.19.5",
-    "@types/babel__generator": "^7.6.4",
     "@babel/parser": "^7.19.4"
   },
   "devDependencies": {
+    "@types/babel__generator": "^7.6.4",
     "@babel/types": "^7.18.8",
     "@sxzz/eslint-config-prettier": "^2.3.1",
     "@sxzz/eslint-config-vue": "^2.3.1",
