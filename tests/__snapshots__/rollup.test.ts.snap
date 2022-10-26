@@ -166,6 +166,80 @@ export { typescript7 as default };
 "
 `;
 
+exports[`transform > fixtures > tests/fixtures/typescript10.vue 1`] = `
+"var typescript10 = \`<template>
+  <div></div>
+</template>
+
+<script setup lang=\\"ts\\">
+import { } from './index5';
+const props = defineProps<{
+  name: string;
+  age: number;
+  msg: string;
+  labels: unknown;
+}>()
+console.log(props)
+</script>
+
+<style lang=\\"scss\\"></style>
+\`;
+
+export { typescript10 as default };
+"
+`;
+
+exports[`transform > fixtures > tests/fixtures/typescript11.vue 1`] = `
+"var typescript11 = \`<template>
+  <div></div>
+</template>
+
+<script setup lang=\\"ts\\">
+import { } from './index5';
+const props = withDefaults(defineProps<{
+  name: string;
+  age: number;
+  msg: string;
+  labels: unknown;
+}>(), {
+  msg: () => 'hello',
+  labels: () => ['one', 'two'],
+})
+console.log(props)
+</script>
+
+<style lang=\\"scss\\"></style>
+\`;
+
+export { typescript11 as default };
+"
+`;
+
+exports[`transform > fixtures > tests/fixtures/typescript12.vue 1`] = `
+"var typescript12 = \`<template>
+  <div></div>
+</template>
+
+<script setup lang=\\"ts\\">
+import { } from './index4';
+withDefaults(defineProps<{
+  name: string;
+  age: number;
+  msg: string;
+  labels: unknown;
+}>(), {
+  msg: () => 'hello',
+  labels: () => ['one', 'two'],
+})
+</script>
+
+<style lang=\\"scss\\"></style>
+\`;
+
+export { typescript12 as default };
+"
+`;
+
 exports[`transform > fixtures > tests/fixtures/typescriptNormal.vue 1`] = `
 "var typescriptNormal = \`<script lang=\\"ts\\" setup>
 defineProps<{

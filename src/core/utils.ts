@@ -13,8 +13,9 @@ import type {
   TextModes as _TextModes,
 } from '@vue/compiler-core'
 import type { CompilerError } from '@vue/compiler-sfc'
-import {
+import type {
   CallExpression,
+  Declaration,
   ExportNamedDeclaration,
   Identifier,
   ImportDeclaration,
@@ -24,6 +25,9 @@ import {
   StringLiteral,
   TSInterfaceDeclaration,
 } from '@babel/types'
+
+const DEFINE_PROPS = 'defineProps'
+const WITH_DEFAULTS = 'withDefaults'
 
 export function isCallOf(
   node: Node | null | undefined,
@@ -216,6 +220,42 @@ export function addINterface(s, definePropsNodeStart, definePropsNodeEnd, script
   return ss
 }
 
+function walkDeclaration(
+  node: Declaration
+) {
+  let out = []
+  if (node.type === 'VariableDeclaration') {
+    const isConst = node.kind === 'const'
+    // export const foo = ...
+    for (const { id, init } of node.declarations) {
+      const isDefineCall = !!(
+        isConst &&
+        isCallOf(
+          init,
+          c => c === DEFINE_PROPS || c === WITH_DEFAULTS
+        )
+      )
+      // console.log(isDefineCall)
+      if (isDefineCall) {
+        out = [init]
+        break
+      }
+    }
+  }
+  return out
+}
+
+function processWithDefaults(node: Node) {
+  if (!isCallOf(node, WITH_DEFAULTS)) {
+    return []
+  }
+  if (isCallOf(node.arguments[0], DEFINE_PROPS)) {
+    return [node.arguments[0]]
+  } else {
+    // TODO
+  }
+}
+
 /*
 {
   type: "script",
@@ -253,7 +293,39 @@ export function replaceCode(script, code, id) {
     const body = scriptAst.body
 
     //  such as defineProps<Foo>()
-    const definePropsNode = filterMarco(body as Statement[])
+    let definePropsNode = filterMarco(body as Statement[])
+    if (!definePropsNode.length) {
+      for (let node of body) {
+        if (node.type === 'ExportNamedDeclaration' && node.declaration) {
+          definePropsNode = walkDeclaration(node.declaration)
+          if (definePropsNode.length) {
+            if (isCallOf(definePropsNode[0], WITH_DEFAULTS)) {
+              definePropsNode = processWithDefaults(definePropsNode[0])
+            }
+            break
+          }
+        } else if (
+          (node.type === 'VariableDeclaration' ||
+            node.type === 'FunctionDeclaration' ||
+            node.type === 'ClassDeclaration' ||
+            node.type === 'TSEnumDeclaration') &&
+          !node.declare
+        ) {
+          definePropsNode = walkDeclaration(node)
+          if (definePropsNode.length) {
+            if (isCallOf(definePropsNode[0], WITH_DEFAULTS)) {
+              definePropsNode = processWithDefaults(definePropsNode[0])
+            }
+            break
+          }
+        }
+      }
+    } else {
+      if (isCallOf(definePropsNode[0], WITH_DEFAULTS)) {
+        definePropsNode = processWithDefaults(definePropsNode[0])
+      }
+    }
+
     if (!definePropsNode.length) {
       return doNothing(code, id)
     }
@@ -407,13 +479,23 @@ export function replaceCode(script, code, id) {
 
         let importPropsTypeNode
         if (
-          (importNode.type === 'ExportNamedDeclaration' || importNode.type === 'ExportDefaultDeclaration') &&
-          importNode.declaration &&
-          importNode.declaration.type === "TSInterfaceDeclaration"
-        ) {
+            ((importNode.type === 'ExportNamedDeclaration' || importNode.type === 'ExportDefaultDeclaration') &&
+            importNode.declaration &&
+              (importNode.declaration.type === "TSInterfaceDeclaration" || 
+                (importNode.declaration.type === 'TSTypeAliasDeclaration' 
+                && importNode.declaration.typeAnnotation.type === 'TSTypeLiteral')
+              )
+            )
+          ) {
           // importNode.declaration TSInterfaceDeclaration
           importNode.declaration.id.name = localName
-          importPropsTypeNode = (importNode.declaration as TSInterfaceDeclaration).body
+          if (importNode.declaration.type === 'TSTypeAliasDeclaration' 
+              && importNode.declaration.typeAnnotation.type === 'TSTypeLiteral'
+            ) {
+            importPropsTypeNode = importNode.declaration.typeAnnotation
+          } else {
+            importPropsTypeNode = (importNode.declaration as TSInterfaceDeclaration).body
+          }
         } else {
           // such as importNode.declaration.type is TSTypeAliasDeclaration
           return doNothing(code, id)
@@ -461,7 +543,7 @@ export const filterMarco = (body: Statement[]) => {
     .map((raw: Node) => {
       let node = raw
       if (raw.type === 'ExpressionStatement') node = raw.expression
-      return isCallOf(node, DEFINE_PROPS_NAME) ? node : undefined
+      return (isCallOf(node, DEFINE_PROPS_NAME) || isCallOf(node, WITH_DEFAULTS)) ? node : undefined
     })
     .filter((node) => !!node)
 }
