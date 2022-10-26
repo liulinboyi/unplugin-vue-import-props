@@ -240,6 +240,31 @@ export { typescript12 as default };
 "
 `;
 
+exports[`transform > fixtures > tests/fixtures/typescript13.vue 1`] = `
+"var typescript13 = \`<template>
+  <div></div>
+</template>
+
+<script setup lang=\\"ts\\">
+import { } from './index5';
+// import { Foo as Test } from \\"./index5\\";
+// import Test from './index5'
+const props = defineProps<{
+  name: string;
+  age: number;
+  msg: string;
+  labels: unknown;
+}>()
+console.log(props)
+</script>
+
+<style lang=\\"scss\\"></style>
+\`;
+
+export { typescript13 as default };
+"
+`;
+
 exports[`transform > fixtures > tests/fixtures/typescriptNormal.vue 1`] = `
 "var typescriptNormal = \`<script lang=\\"ts\\" setup>
 defineProps<{

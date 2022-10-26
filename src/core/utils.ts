@@ -13,7 +13,7 @@ import type {
   TextModes as _TextModes,
 } from '@vue/compiler-core'
 import type { CompilerError } from '@vue/compiler-sfc'
-import type {
+import {
   CallExpression,
   Declaration,
   ExportNamedDeclaration,
@@ -21,6 +21,7 @@ import type {
   ImportDeclaration,
   ImportSpecifier,
   Node,
+  removeComments,
   Statement,
   StringLiteral,
   TSInterfaceDeclaration,
@@ -193,6 +194,7 @@ export function doNothing(code, id) {
 export function getRemoveTypeImportCode(copyImportNode) {
   let removeTypeImportCode
   if (copyImportNode.specifiers.length) {
+    clearComment(copyImportNode)
     removeTypeImportCode = new CodeGenerator(copyImportNode as Node, {}).generate().code
   } else {
     removeTypeImportCode = ''
@@ -529,6 +531,7 @@ export function replaceCode(script, code, id, alias) {
         const gap = getGap(node, removeTypeImportCode)
         definePropsNode[0].typeParameters.params.length = 0
         definePropsNode[0].typeParameters.params.push(importPropsTypeNode)
+        clearComment(definePropsNode[0])
         let codes = new CodeGenerator(definePropsNode[0], {}).generate().code
         const ss = addINterface(s, definePropsNodeStart, definePropsNodeEnd, scriptStart, gap, codes)
 
@@ -540,6 +543,10 @@ export function replaceCode(script, code, id, alias) {
     }
   }
   return afterReplace
+}
+
+function clearComment(node) {
+  removeComments(node)
 }
 
 export const errors: (CompilerError | SyntaxError)[] = []
