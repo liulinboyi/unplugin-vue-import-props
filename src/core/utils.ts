@@ -179,11 +179,13 @@ export function getImportPropsTypeParametersTypeName(importPropsTypeParameters) 
       importPropsTypeParameters.typeName as Identifier
     ).name
   } else {
-    throw new Error(`must be TSTypeReference`)
+    console.warn(`must be TSTypeReference`)
+    return doNothing()
+    // throw new Error(`must be TSTypeReference`)
   }
 }
 
-export function doNothing(code, id) {
+export function doNothing(code?, id?) {
   // const { descriptor } = parse(code, {
   //   filename: id,
   // })
@@ -346,19 +348,19 @@ export function replaceCode(script, code, id, alias) {
     }
 
     if (!definePropsNode.length) {
-      return doNothing(code, id)
+      return doNothing()
     }
     if (definePropsNode.length > 1) {
       console.warn(`${DEFINE_PROPS_NAME} marco can only use one!`)
-      return doNothing(code, id)
+      return doNothing()
     }
     if (!definePropsNode[0].typeParameters || !definePropsNode[0].typeParameters.params || !definePropsNode[0].typeParameters.params.length) {
-      return doNothing(code, id)
+      return doNothing()
     }
     const importPropsTypeParameters =
       definePropsNode[0].typeParameters.params[0]
     if (importPropsTypeParameters.type !== 'TSTypeReference') {
-      return doNothing(code, id)
+      return doNothing()
     }
     // such as Foo
     let importPropsTypeParametersTypeNameLocal = getImportPropsTypeParametersTypeName(importPropsTypeParameters)
@@ -375,11 +377,13 @@ export function replaceCode(script, code, id, alias) {
     )
     // in the definedProps<Foo>(), the Foo has one import like import { Foo } from './index'
     if (imported.length > 1) {
-      throw new Error(
-        `in the definedProps<${importPropsTypeParametersTypeNameLocal}>(), ${importPropsTypeParametersTypeNameLocal} is double import!`
-      )
+      console.warn(`in the definedProps<${importPropsTypeParametersTypeNameLocal}>(), ${importPropsTypeParametersTypeNameLocal} is double import!`)
+      return doNothing()
+      // throw new Error(
+      //   `in the definedProps<${importPropsTypeParametersTypeNameLocal}>(), ${importPropsTypeParametersTypeNameLocal} is double import!`
+      // )
     } else if (imported.length === 0) {
-      return doNothing(code, id)
+      return doNothing()
     }
     const node = imported[0]
     try {
@@ -399,7 +403,9 @@ export function replaceCode(script, code, id, alias) {
       } else if (fileExists(`${rpath}.d.ts`)) {
         content = getFileContent(`${rpath}.d.ts`)
       } else {
-        throw new Error('The import file is not exit.')
+        console.warn('The import file is not exit.')
+        return doNothing()
+        // throw new Error('The import file is not exit.')
       }
       const result = _parse(content, {
         plugins: [...(plugins ?? [])],
@@ -420,7 +426,9 @@ export function replaceCode(script, code, id, alias) {
         (n) => n.type === 'ExportDefaultDeclaration' && n.exportKind === 'value' && (n.declaration as unknown as Identifier).type === 'Identifier'
       )
       if (exportDefaultIdentifier.length > 1) {
-        throw new Error(`export default must be one!`)
+        console.warn(`export default must be one!`)
+        return doNothing()
+        // throw new Error(`export default must be one!`)
       }
 
       // import and local name are not equal, this means local name is unique so change
@@ -430,7 +438,7 @@ export function replaceCode(script, code, id, alias) {
         (p) => p.local.name === importPropsTypeParametersTypeNameLocal
       )[0]
       if (!importTypeSpecifiers) {
-        return doNothing(code, id)
+        return doNothing()
       }
       // such as import { Foo as Test} from './app
       // Foo is importedName
@@ -499,7 +507,9 @@ export function replaceCode(script, code, id, alias) {
             )
           }
         } else {
-          throw new Error('import error')
+          console.warn('import error')
+          return doNothing()
+          // throw new Error('import error')
         }
 
         let importPropsTypeNode
@@ -523,7 +533,7 @@ export function replaceCode(script, code, id, alias) {
           }
         } else {
           // such as importNode.declaration.type is TSTypeAliasDeclaration
-          return doNothing(code, id)
+          return doNothing()
         }
 
         const removeTypeImportCode = getRemoveTypeImportCode(copyImportNode)
@@ -539,7 +549,9 @@ export function replaceCode(script, code, id, alias) {
       }
     } catch (err: unknown) {
       const error = (err as Error)
-      throw new Error(`${error.message} ${error.stack} ${error.name}`)
+      console.warn(`${error.message} ${error.stack} ${error.name}`)
+      return doNothing()
+      // throw new Error(`${error.message} ${error.stack} ${error.name}`)
     }
   }
   return afterReplace
@@ -556,7 +568,7 @@ export const parseSFC = (code: string, id: string, alias: { [x: string]: string 
   })
   const script = ast.descriptor.scriptSetup
   if (!script) {
-    return doNothing(code, id)
+    return doNothing()
   }
 
   let afterReplace = replaceCode(script, code, id, alias)
