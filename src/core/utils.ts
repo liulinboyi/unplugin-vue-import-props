@@ -532,7 +532,7 @@ export function replaceCode(script, code, id, alias) {
         definePropsNode[0].typeParameters.params.length = 0
         definePropsNode[0].typeParameters.params.push(importPropsTypeNode)
         clearComment(definePropsNode[0])
-        let codes = new CodeGenerator(definePropsNode[0], {}).generate().code
+        let codes = new CodeGenerator(definePropsNode[0], { minified: true }).generate().code
         const ss = addINterface(s, definePropsNodeStart, definePropsNodeEnd, scriptStart, gap, codes)
 
         afterReplace = ss.toString()

@@ -3,9 +3,7 @@
 exports[`transform > fixtures > tests/fixtures/typescript.vue 1`] = `
 "var typescript = \`<script lang=\\"ts\\" setup>
 import { } from './index';
-defineProps<{
-  name: string;
-}>()
+defineProps<{name:string;}>()
 console.log('Hello')
 </script>
 
@@ -24,9 +22,7 @@ exports[`transform > fixtures > tests/fixtures/typescript1.vue 1`] = `
 "var typescript1 = \`<script lang=\\"ts\\" setup>
 import { foo } from './index';
 foo()
-defineProps<{
-  name: string;
-}>()
+defineProps<{name:string;}>()
 foo()
 console.log('Hello')
 </script>
@@ -46,9 +42,7 @@ exports[`transform > fixtures > tests/fixtures/typescript2.vue 1`] = `
 "var typescript2 = \`<script lang=\\"ts\\" setup>
 import { foo } from './index';
 foo()
-defineProps<{
-  age: number;
-}>()
+defineProps<{age:number;}>()
 foo()
 console.log('Hello')
 </script>
@@ -68,9 +62,7 @@ exports[`transform > fixtures > tests/fixtures/typescript3.vue 1`] = `
 "var typescript3 = \`<script lang=\\"ts\\" setup>
 import { foo } from './index1';
 foo()
-defineProps<{
-  gender: string;
-}>()
+defineProps<{gender:string;}>()
 foo()
 console.log('Hello')
 </script>
@@ -111,9 +103,7 @@ export { typescript4 as default };
 exports[`transform > fixtures > tests/fixtures/typescript5.vue 1`] = `
 "var typescript5 = \`<script lang=\\"ts\\" setup>
 
-defineProps<{
-  gender: string;
-}>()
+defineProps<{gender:string;}>()
 console.log('Hello')
 </script>
 
@@ -131,9 +121,7 @@ export { typescript5 as default };
 exports[`transform > fixtures > tests/fixtures/typescript6.vue 1`] = `
 "var typescript6 = \`<script lang=\\"ts\\" setup>
 import { } from './index2';
-defineProps<{
-  name: string;
-}>()
+defineProps<{name:string;}>()
 console.log('Hello')
 </script>
 
@@ -173,12 +161,7 @@ exports[`transform > fixtures > tests/fixtures/typescript10.vue 1`] = `
 
 <script setup lang=\\"ts\\">
 import { } from './index5';
-const props = defineProps<{
-  name: string;
-  age: number;
-  msg: string;
-  labels: unknown;
-}>()
+const props = defineProps<{name:string;age:number;msg:string;labels:unknown;}>()
 console.log(props)
 </script>
 
@@ -196,12 +179,7 @@ exports[`transform > fixtures > tests/fixtures/typescript11.vue 1`] = `
 
 <script setup lang=\\"ts\\">
 import { } from './index5';
-const props = withDefaults(defineProps<{
-  name: string;
-  age: number;
-  msg: string;
-  labels: unknown;
-}>(), {
+const props = withDefaults(defineProps<{name:string;age:number;msg:string;labels:unknown;}>(), {
   msg: () => 'hello',
   labels: () => ['one', 'two'],
 })
@@ -222,12 +200,7 @@ exports[`transform > fixtures > tests/fixtures/typescript12.vue 1`] = `
 
 <script setup lang=\\"ts\\">
 import { } from './index4';
-withDefaults(defineProps<{
-  name: string;
-  age: number;
-  msg: string;
-  labels: unknown;
-}>(), {
+withDefaults(defineProps<{name:string;age:number;msg:string;labels:unknown;}>(), {
   msg: () => 'hello',
   labels: () => ['one', 'two'],
 })
@@ -249,12 +222,7 @@ exports[`transform > fixtures > tests/fixtures/typescript13.vue 1`] = `
 import { } from './index5';
 // import { Foo as Test } from \\"./index5\\";
 // import Test from './index5'
-const props = defineProps<{
-  name: string;
-  age: number;
-  msg: string;
-  labels: unknown;
-}>()
+const props = defineProps<{name:string;age:number;msg:string;labels:unknown;}>()
 console.log(props)
 </script>
 
