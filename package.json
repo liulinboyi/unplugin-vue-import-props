@@ -1,6 +1,6 @@
 {
   "name": "unplugin-vue-import-props",
-  "version": "0.0.5-beta.2",
+  "version": "0.0.5-beta.3",
   "packageManager": "pnpm@7.5.0",
   "description": "Add import define props type support for Vue script-setup and lang is typescript",
   "keywords": [
