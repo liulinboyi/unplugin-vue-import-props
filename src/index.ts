@@ -37,7 +37,8 @@ export default createUnplugin<Options>((options = {}) => {
     },
 
     config(config, { _command }) {
-      alias = config.resolve.alias
+      const aliasTemp = config?.resolve?.alias
+      alias = aliasTemp ? aliasTemp : {}
     },
 
     transform(code, id) {
