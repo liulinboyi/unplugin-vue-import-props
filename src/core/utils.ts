@@ -21,7 +21,7 @@ import {
   ImportDeclaration,
   ImportSpecifier,
   Node,
-  removeComments,
+  // removeComments,
   Statement,
   StringLiteral,
   TSInterfaceDeclaration,
@@ -556,9 +556,12 @@ export function replaceCode(script, code, id, alias) {
   }
   return afterReplace
 }
-
+const COMMENT_KEYS = ["leadingComments", "trailingComments", "innerComments"];
 function clearComment(node) {
-  removeComments(node)
+  // removeComments(node)
+  COMMENT_KEYS.forEach(key => {
+    node[key] = null;
+  });
 }
 
 export const errors: (CompilerError | SyntaxError)[] = []
