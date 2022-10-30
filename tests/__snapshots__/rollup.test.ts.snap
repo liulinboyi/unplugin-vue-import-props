@@ -233,6 +233,32 @@ export { typescript13 as default };
 "
 `;
 
+exports[`transform > fixtures > tests/fixtures/typescript14.vue 1`] = `
+"var typescript14 = \`<script lang=\\"ts\\" setup>
+import { } from './index';
+defineProps<
+
+
+{name:string;}
+
+
+
+
+>()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescript14 as default };
+"
+`;
+
 exports[`transform > fixtures > tests/fixtures/typescriptNormal.vue 1`] = `
 "var typescriptNormal = \`<script lang=\\"ts\\" setup>
 defineProps<{
