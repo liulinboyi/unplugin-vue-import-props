@@ -28,9 +28,7 @@ export interface Test {
 ```vue
 <script setup lang="ts">
 import { } from "./app";
-defineProps<{
-  name: string;
-}>();
+defineProps<{name:string;}>();
 </script>
 ```
 
@@ -56,9 +54,7 @@ export interface Foo {
 ```vue
 <script setup lang="ts">
 import { } from "./app";
-defineProps<{
-  name: string;
-}>();
+defineProps<{name:string;}>();
 </script>
 ```
 
