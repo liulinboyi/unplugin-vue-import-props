@@ -539,11 +539,13 @@ export function replaceCode(script, code, id, alias) {
         const removeTypeImportCode = getRemoveTypeImportCode(copyImportNode)
         const s = removeTypeImport(node, code, removeTypeImportCode, scriptStart)
         const gap = getGap(node, removeTypeImportCode)
-        definePropsNode[0].typeParameters.params.length = 0
-        definePropsNode[0].typeParameters.params.push(importPropsTypeNode)
-        clearComment(definePropsNode[0])
-        let codes = new CodeGenerator(definePropsNode[0], { minified: true }).generate().code
-        const ss = addINterface(s, definePropsNodeStart, definePropsNodeEnd, scriptStart, gap, codes)
+        const definePropsLoc = {
+          start: definePropsNode[0].typeParameters.params[0].start,
+          end: definePropsNode[0].typeParameters.params[0].end
+        }
+        clearComment(importPropsTypeNode)
+        let codes = new CodeGenerator(importPropsTypeNode, { minified: true }).generate().code
+        const ss = addINterface(s, definePropsLoc.start, definePropsLoc.end, scriptStart, gap, codes)
 
         afterReplace = ss.toString()
       }
