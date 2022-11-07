@@ -37,6 +37,8 @@ dependencies:
   '@vue/compiler-core': 3.2.41
   '@vue/compiler-dom': 3.2.41
   '@vue/compiler-sfc': 3.2.41
+  magic-string: 0.26.7
+  typescript: 4.8.4
   unplugin: 0.7.2_rollup@2.79.1+vite@3.1.8
 
 devDependencies:
@@ -51,12 +53,10 @@ devDependencies:
   eslint: 8.26.0
   eslint-define-config: 1.7.0
   fast-glob: 3.2.12
-  magic-string: 0.26.7
   rimraf: 3.0.2
   rollup: 2.79.1
   tsup: 6.3.0_typescript@4.8.4
   tsx: 3.10.4
-  typescript: 4.8.4
   unplugin-vue: 3.1.3_vite@3.1.8+vue@3.2.41
   vite: 3.1.8
   vitest: 0.18.1_@vitest+ui@0.18.1
@@ -2147,7 +2147,7 @@ packages:
     engines: {node: '>=12'}
     dependencies:
       sourcemap-codec: 1.4.8
-    dev: true
+    dev: false
 
   /mdast-util-from-markdown/0.8.5:
     resolution: {integrity: sha512-2hkTXtYYnr+NubD/g6KGBS/0mFmBcifAsI0yIWRiRo0PjVs6SSOSOdtzbp6kSGnShDN6G5aWZpKQ2lWRy27mWQ==}
@@ -2950,7 +2950,6 @@ packages:
     resolution: {integrity: sha512-QCh+85mCy+h0IGff8r5XWzOVSbBO+KfeYrMQh7NJ58QujwcE22u+NUSmUxqF+un70P9GXKxa2HCNiTTMJknyjQ==}
     engines: {node: '>=4.2.0'}
     hasBin: true
-    dev: true
 
   /unbox-primitive/1.0.2:
     resolution: {integrity: sha512-61pPlCD9h51VoreyJ0BReideM3MDKMKnh6+V9L08331ipq6Q8OFXZYiqP6n/tbHx4s5I9uRhcye6BrbkizkBDw==}
