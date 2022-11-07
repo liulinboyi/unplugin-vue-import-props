@@ -18,6 +18,31 @@ export { typescript as default };
 "
 `;
 
+exports[`transform > fixtures > tests/fixtures/typescript-global.vue 1`] = `
+"var typescriptGlobal = \`<script lang=\\"ts\\" setup>
+defineProps<
+
+
+{name:string;}
+
+
+
+
+>()
+console.log('Hello')
+</script>
+
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+\`;
+
+export { typescriptGlobal as default };
+"
+`;
+
 exports[`transform > fixtures > tests/fixtures/typescript1.vue 1`] = `
 "var typescript1 = \`<script lang=\\"ts\\" setup>
 import { foo } from './index';
