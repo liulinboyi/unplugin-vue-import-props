@@ -34,7 +34,6 @@ dependencies:
   '@babel/generator': 7.19.6
   '@babel/parser': 7.19.6
   '@rollup/pluginutils': 4.2.1
-  '@types/babel__generator': 7.6.4
   '@vue/compiler-core': 3.2.41
   '@vue/compiler-dom': 3.2.41
   '@vue/compiler-sfc': 3.2.41
@@ -43,7 +42,8 @@ dependencies:
 devDependencies:
   '@babel/types': 7.19.4
   '@sxzz/eslint-config-prettier': 2.4.4_eslint@8.26.0
-  '@sxzz/eslint-config-vue': 2.4.4_eslint@8.26.0+vue@3.2.41
+  '@sxzz/eslint-config-vue': 2.4.4_5phhjlepx6uce62n7km5sehevq
+  '@types/babel__generator': 7.6.4
   '@types/node': 18.11.3
   '@vitest/ui': 0.18.1
   bumpp: 8.2.1
@@ -57,7 +57,7 @@ devDependencies:
   tsup: 6.3.0_typescript@4.8.4
   tsx: 3.10.4
   typescript: 4.8.4
-  unplugin-vue: 3.1.3_vue@3.2.41
+  unplugin-vue: 3.1.3_vite@3.1.8+vue@3.2.41
   vite: 3.1.8
   vitest: 0.18.1_@vitest+ui@0.18.1
   vue: 3.2.41
@@ -295,10 +295,11 @@ packages:
       - supports-color
     dev: true
 
-  /@sxzz/eslint-config-ts/2.4.4_eslint@8.26.0:
+  /@sxzz/eslint-config-ts/2.4.4_wyqvi574yv7oiwfeinomdzmc3m:
     resolution: {integrity: sha512-wc0QxJmPSE+OX2uYGCfUyrF5Lo8uw9e0PESYYpVu0kDgqgwpaybBdPDYTQjwsf2SpuHD6Tm2Q5MXeQzY7q3Qfw==}
     peerDependencies:
       eslint: '>=7.4.0'
+      typescript: '>=3.9'
     dependencies:
       '@sxzz/eslint-config-basic': 2.4.4_yxvyo6v5zwzggfecalzmx54lre
       '@typescript-eslint/eslint-plugin': 5.40.1_c4zyna56jjjrggqkyejnaxjxfu
@@ -312,7 +313,7 @@ packages:
       - supports-color
     dev: true
 
-  /@sxzz/eslint-config-vue/2.4.4_eslint@8.26.0+vue@3.2.41:
+  /@sxzz/eslint-config-vue/2.4.4_5phhjlepx6uce62n7km5sehevq:
     resolution: {integrity: sha512-yd9RWNMxtOxUIL25IxL+B3fZyxbZuVyguLiZ3MGO9x5HeaEaFi6sb/v9KZyM1XaTrdpN1LiweBmtaEOsNTmUBg==}
     peerDependencies:
       eslint: '>=7.4.0'
@@ -321,7 +322,7 @@ packages:
       vue:
         optional: true
     dependencies:
-      '@sxzz/eslint-config-ts': 2.4.4_eslint@8.26.0
+      '@sxzz/eslint-config-ts': 2.4.4_wyqvi574yv7oiwfeinomdzmc3m
       eslint: 8.26.0
       eslint-define-config: 1.7.0
       eslint-plugin-vue: 9.6.0_eslint@8.26.0
@@ -331,13 +332,14 @@ packages:
       - eslint-import-resolver-typescript
       - eslint-import-resolver-webpack
       - supports-color
+      - typescript
     dev: true
 
   /@types/babel__generator/7.6.4:
     resolution: {integrity: sha512-tFkciB9j2K755yrTALxD44McOrk+gfpIpvC3sxHjRawj6PfnQxrse4Clq5y/Rq+G3mrBurMax/lG8Qn2t9mSsg==}
     dependencies:
       '@babel/types': 7.19.4
-    dev: false
+    dev: true
 
   /@types/chai-subset/1.3.3:
     resolution: {integrity: sha512-frBecisrNGz+F4T6bcc+NLeolfiojh5FxW2klu669+8BARtyQv2C/GkNW6FUodVe4BroGMP/wER/YDGc7rEllw==}
@@ -2965,10 +2967,11 @@ packages:
       '@types/unist': 2.0.6
     dev: true
 
-  /unplugin-vue/3.1.3_vue@3.2.41:
+  /unplugin-vue/3.1.3_vite@3.1.8+vue@3.2.41:
     resolution: {integrity: sha512-+89cR7VQ6PjQXN1TwB7msX2o1z1fHxXT0N7ADfU6VerAFwtG8Aj00hV5oh3uDm0GCPBGshjJ7mhGmQoAU9Ftbw==}
     engines: {node: '>=14.17.0'}
     peerDependencies:
+      vite: ^3.0.0
       vue: ^3.2.25
     peerDependenciesMeta:
       vite:
@@ -2980,11 +2983,7 @@ packages:
       vite: 3.1.8
       vue: 3.2.41
     transitivePeerDependencies:
-      - less
-      - sass
-      - stylus
       - supports-color
-      - terser
     dev: true
 
   /unplugin/0.7.2_rollup@2.79.1+vite@3.1.8:

@@ -5,10 +5,10 @@ import {
 } from './utils'
 import type { TransformResult } from 'unplugin'
 
-export const transform = (code: string, id: string, alias: { [x: string]: string }): TransformResult => {
+export const transform = async (code: string, id: string, alias: { [x: string]: string }, configPath: string): Promise<TransformResult> => {
   if (!code.includes(DEFINE_PROPS_NAME)) return
 
-  const sfc = parseSFC(code, id, alias)
+  const sfc = await parseSFC(code, id, alias, configPath)
   if (!sfc) return
   if (!sfc.scriptSetup) return
 

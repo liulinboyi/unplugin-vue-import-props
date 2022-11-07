@@ -13,7 +13,9 @@ export default defineConfig({
       '@vue/compiler-core',
       '@vue/compiler-dom',
       '@rollup/pluginutils',
-      'unplugin'
+      'magic-string',
+      'unplugin',
+      'typescript',
     ]
   }
 })

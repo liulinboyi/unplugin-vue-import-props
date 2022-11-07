@@ -1,4 +1,4 @@
-import path from 'path'
+import path, { dirname } from 'path'
 import fs from 'fs'
 import { parse } from '@vue/compiler-sfc'
 import * as CompilerDOM from '@vue/compiler-dom'
@@ -13,7 +13,7 @@ import type {
   TextModes as _TextModes,
 } from '@vue/compiler-core'
 import type { CompilerError } from '@vue/compiler-sfc'
-import {
+import type {
   CallExpression,
   Declaration,
   ExportNamedDeclaration,
@@ -21,14 +21,19 @@ import {
   ImportDeclaration,
   ImportSpecifier,
   Node,
+  Program,
   // removeComments,
   Statement,
   StringLiteral,
   TSInterfaceDeclaration,
+  TSTypeAliasDeclaration,
 } from '@babel/types'
+import ts from "typescript";
+import { fileURLToPath } from 'node:url'
 
 const DEFINE_PROPS = 'defineProps'
 const WITH_DEFAULTS = 'withDefaults'
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 export function isCallOf(
   node: Node | null | undefined,
@@ -173,10 +178,10 @@ export function parseScript(scriptContent, plugins) {
   }).program
 }
 
-export function getImportPropsTypeParametersTypeName(importPropsTypeParameters) {
-  if (importPropsTypeParameters.type === 'TSTypeReference') {
+export function getImportPropsTypeParametersTypeName(definedPropsTypeParametersNameNode) {
+  if (definedPropsTypeParametersNameNode.type === 'TSTypeReference') {
     return (
-      importPropsTypeParameters.typeName as Identifier
+      definedPropsTypeParametersNameNode.typeName as Identifier
     ).name
   } else {
     console.warn(`must be TSTypeReference`)
@@ -277,6 +282,79 @@ function replaceAlias(cpath: string, alias) {
   return cpath
 }
 
+function getRootTypes(configPath: string) {
+  return new Promise((resolve, reject) => {
+    // has no import type maybe config tsconfig.json's compilerOptions.typeRoots add global type
+    if (configPath) {
+      ts.sys.fileExists(configPath)
+    } else {
+      console.warn('the tsconfig.json not set')
+      return doNothing()
+      // configPath = ts.findConfigFile(
+      //     /*searchPath*/ "./", ts.sys.fileExists, "tsconfig.json");
+      // if (!configPath) {
+      //   console.error("Could not find a valid 'tsconfig.json'.");
+      //   return doNothing()
+      // }
+      // configPath = path.resolve(__dirname, configPath)
+    }
+    let config: string | { [x: string]: unknown } = fs.readFileSync(configPath).toString()
+    try {
+      config = JSON.parse(config)
+    } catch (error) {
+      console.error(config)
+      return doNothing()
+    }
+    let cachePath = path.resolve(path.dirname(configPath), "./node_modules");
+    // const cachePath = path.resolve(path.dirname(configPath), './node_modules/.unplugin-vue-import-props-cache.json')
+    if (config['compilerOptions'] && config['compilerOptions']['typeRoots'] && config['compilerOptions']['typeRoots'].length) {
+      // let temp = path.relative(cachePath, path.dirname(configPath))
+      let temp = "../"
+      const result = config['compilerOptions']['typeRoots'].map(n => {
+        // let A = path.join(temp, n)
+        // let B = path.resolve(temp, n)
+        return path.normalize(`${temp}/${n}`)
+      })
+      config = {
+        "compilerOptions": {
+          "typeRoots": result,
+        },
+        "include": result,
+        "exclude": []
+      }
+    }
+    if (!fs.existsSync(cachePath)) {
+      // mkdir(cachePath);
+      fs.mkdirSync(path.dirname(cachePath))
+    }
+    cachePath = path.resolve(cachePath, './.unplugin-vue-import-props-cache.json')
+    fs.writeFileSync(cachePath, JSON.stringify(config))
+    let createProgram = ts.createSemanticDiagnosticsBuilderProgram;
+    let host = ts.createWatchCompilerHost(cachePath, {}, ts.sys, createProgram);
+    // let origCreateProgram = host.createProgram;
+    let create = function (rootNames, options, host, oldProgram) {
+      resolve(rootNames)
+      // console.log("** We're about to create the program! **");
+      // let program = origCreateProgram(rootNames, options, host, oldProgram);
+      // program.getSourceFiles();
+      // return program;
+      return null
+    };
+    host.createProgram = create;
+    // let origPostProgramCreate = host.afterProgramCreate;
+    // host.afterProgramCreate = function (program) {
+    //     console.log("** We finished making the program! **");
+    //     origPostProgramCreate(program);
+    // };
+    // `createWatchProgram` creates an initial program, watches files, and updates
+    // the program over time.
+    ts.createWatchProgram(host);
+    // function reportDiagnostic(diagnostic) {
+    //   console.error("Error", diagnostic.code, ":", ts.flattenDiagnosticMessageText(diagnostic.messageText, formatHost.getNewLine()));
+    // }
+  })
+}
+
 /*
 {
   type: "script",
@@ -302,7 +380,7 @@ function replaceAlias(cpath: string, alias) {
   setup: true,
 }
 */
-export function replaceCode(script, code, id, alias) {
+export async function replaceCode(script, code, id, alias, configPath) {
   let afterReplace = ''
   if (script.type === 'script' && script.lang === 'ts' && script.setup) {
     // <script>'s offset
@@ -357,13 +435,13 @@ export function replaceCode(script, code, id, alias) {
     if (!definePropsNode[0].typeParameters || !definePropsNode[0].typeParameters.params || !definePropsNode[0].typeParameters.params.length) {
       return doNothing()
     }
-    const importPropsTypeParameters =
+    const definedPropsTypeParametersNameNode =
       definePropsNode[0].typeParameters.params[0]
-    if (importPropsTypeParameters.type !== 'TSTypeReference') {
+    if (definedPropsTypeParametersNameNode.type !== 'TSTypeReference') {
       return doNothing()
     }
     // such as Foo
-    let importPropsTypeParametersTypeNameLocal = getImportPropsTypeParametersTypeName(importPropsTypeParameters)
+    let definedPropsTypeParametersName = getImportPropsTypeParametersTypeName(definedPropsTypeParametersNameNode)
     // start
     const definePropsNodeStart = definePropsNode[0].start
     const definePropsNodeEnd = definePropsNode[0].end
@@ -372,188 +450,294 @@ export function replaceCode(script, code, id, alias) {
       (n) =>
         n.type === 'ImportDeclaration' &&
         n.specifiers.some(
-          (p) => p.local.name === importPropsTypeParametersTypeNameLocal
+          (p) => p.local.name === definedPropsTypeParametersName
         )
     )
+    let rootTypes
     // in the definedProps<Foo>(), the Foo has one import like import { Foo } from './index'
     if (imported.length > 1) {
-      console.warn(`in the definedProps<${importPropsTypeParametersTypeNameLocal}>(), ${importPropsTypeParametersTypeNameLocal} is double import!`)
+      console.warn(`in the definedProps<${definedPropsTypeParametersName}>(), ${definedPropsTypeParametersName} is double import!`)
       return doNothing()
       // throw new Error(
-      //   `in the definedProps<${importPropsTypeParametersTypeNameLocal}>(), ${importPropsTypeParametersTypeNameLocal} is double import!`
+      //   `in the definedProps<${definedPropsTypeParametersName}>(), ${definedPropsTypeParametersName} is double import!`
       // )
     } else if (imported.length === 0) {
-      return doNothing()
+      // return doNothing()
+      rootTypes = await getRootTypes(configPath)
+      // console.log(rootTypes)
     }
-    const node = imported[0]
-    try {
-      let rpath = ''
-      if ((node as ImportDeclarationInfo).source.value.startsWith('@')) {
-        rpath = replaceAlias((node as ImportDeclarationInfo).source.value, alias)
-      } else {
-        rpath = path.resolve(
-          cpath,
-          (node as ImportDeclarationInfo).source.value
-        )
-      }
+    // has no import but has global type
+    if (!imported.length && rootTypes) {
+      try {
+        /*
+        rootTypes
+        [
+          "E:/开源/unplugin-vue-import-props/tests/types/index.d.ts",
+        ]
+      */
+        // if the rootTypes file has export default type, all type in the file can't use as a global type
+        let cache: Array<{
+          path: string;
+          hash: string;
+          ast: Program;
+        }> = []
+        for (let n of rootTypes) {
+          let content = getFileContent(n)
+          let curCache = cache.filter(item => item.path === n)
 
-      let content
-      if (fileExists(`${rpath}.ts`)) {
-        content = getFileContent(`${rpath}.ts`)
-      } else if (fileExists(`${rpath}.d.ts`)) {
-        content = getFileContent(`${rpath}.d.ts`)
-      } else {
-        console.warn('The import file is not exit.')
-        return doNothing()
-        // throw new Error('The import file is not exit.')
-      }
-      const result = _parse(content, {
-        plugins: [...(plugins ?? [])],
-        sourceType: 'module',
-      }).program
-      const importNodes = result.body.filter(
-        (n) => n.type === 'ExportNamedDeclaration' && n.exportKind === 'type' || n.type === 'ExportDefaultDeclaration' && n.exportKind === 'value' && (n.declaration as unknown as TSInterfaceDeclaration).type === 'TSInterfaceDeclaration'
-      )
-
-      /**
-       * interface Foo {
-       * 
-       * }
-       * 
-       * export default Foo
-       */
-      const exportDefaultIdentifier = result.body.filter(
-        (n) => n.type === 'ExportDefaultDeclaration' && n.exportKind === 'value' && (n.declaration as unknown as Identifier).type === 'Identifier'
-      )
-      if (exportDefaultIdentifier.length > 1) {
-        console.warn(`export default must be one!`)
-        return doNothing()
-        // throw new Error(`export default must be one!`)
-      }
-
-      // import and local name are not equal, this means local name is unique so change
-      // the type defined name to local name
-      const copyImportNode: ImportDeclarationInfo = JSON.parse(JSON.stringify(node))
-      const importTypeSpecifiers = copyImportNode.specifiers.filter(
-        (p) => p.local.name === importPropsTypeParametersTypeNameLocal
-      )[0]
-      if (!importTypeSpecifiers) {
-        return doNothing()
-      }
-      // such as import { Foo as Test} from './app
-      // Foo is importedName
-      // Text is LocalName
-      const localName = importTypeSpecifiers.local.name
-      let importedName = ''
-      if (importTypeSpecifiers.type === 'ImportSpecifier') {
-        if (importTypeSpecifiers.imported.type === 'Identifier') {
-          importedName = importTypeSpecifiers.imported.name
-        }
-      }
-
-      if (importNodes.length === 0 && exportDefaultIdentifier.length === 1) {
-        const exportDefaultIdentifierName = (exportDefaultIdentifier[0] as any).declaration.name
-        const exportDefaultIdentifierValue = result.body.filter(n => n.type === 'TSInterfaceDeclaration' && n.id.name === exportDefaultIdentifierName)
-        if (exportDefaultIdentifierValue.length) {
-          /**
-           * interface Foo {
-           * }
-           * interface Foo {
-           * }
-           * export default Foo
-           * 
-           * get the first one
-           */
-          if (exportDefaultIdentifierValue.length > 1) {
-            console.warn(`don't support Subsequent property declarations, 不支持后续属性声明`)
-          }
-          (exportDefaultIdentifierValue[0] as TSInterfaceDeclaration).id.name = localName
-          importNodes.push(JSON.parse(JSON.stringify(exportDefaultIdentifier[0])));
-          (importNodes[0] as any).declaration = exportDefaultIdentifierValue[0]
-        }
-      }
-
-      let match = importNodes.filter(
-        n => importedName ?
-          (((n as ExportNamedDeclaration).declaration) as any).id.name === importedName :
-          (((n as ExportNamedDeclaration).declaration) as any).id.name === localName
-      )
-
-      if (match.length > 2) {
-        console.warn(`don't support Subsequent property declarations`)
-        console.warn(`不支持后续属性声明`)
-        match = [match[0]]
-      }
-      if (match.length) {
-        const importNode = match[0]
-
-        if (copyImportNode.specifiers.length > 1) {
-          copyImportNode.specifiers = copyImportNode.specifiers.filter(
-            (p) => p.local.name !== importPropsTypeParametersTypeNameLocal
-          )
-        } else if (copyImportNode.specifiers.length === 1) {
-          const specifier = copyImportNode.specifiers.find(
-            (p) => p.local.name === importPropsTypeParametersTypeNameLocal
-          );
-          if ((specifier as ImportSpecifier).imported) {
-            // if ('name' in ((specifier as ImportSpecifier).imported as Identifier)) {
-            ((specifier as ImportSpecifier).imported as Identifier).name = ''
-            specifier.local.name = ''
-            // }
+          if (curCache.length) {
+            // file content is change
+            if (curCache[0].hash !== content) {
+              const result = _parse(content, {
+                plugins: [...(plugins ?? [])],
+                sourceType: 'module',
+              }).program
+              curCache[0].hash = content
+              curCache[0].ast = result
+            }
           } else {
-            // such as import Foo from './app
-            copyImportNode.specifiers = copyImportNode.specifiers.filter(
-              (p) => p.local.name !== importPropsTypeParametersTypeNameLocal
-            )
+            const result = _parse(content, {
+              plugins: [...(plugins ?? [])],
+              sourceType: 'module',
+            }).program
+
+            cache.push({
+              path: n,
+              hash: content,
+              ast: result
+            })
           }
+        }
+        // console.log(cache)
+        for (let n of cache) {
+          // if the global *.d.ts or *.ts has ExportNamedDeclaration or ExportDefaultDeclaration node, it can't as a global type
+          if (n.ast.body.find(n => n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration')) {
+            n.ast.body.length = 0
+          }
+          n.ast.body = n.ast.body.filter(n => n.type === 'TSInterfaceDeclaration' || (n.type === 'TSTypeAliasDeclaration' && n.typeAnnotation.type === 'TSTypeLiteral'))
+          let sameIdName = n.ast.body.filter((n: TSInterfaceDeclaration | TSTypeAliasDeclaration) => n.id.name === definedPropsTypeParametersName)
+          if (sameIdName.length) {
+            if (sameIdName.length > 1) {
+              console.warn(`don't support Subsequent property declarations`)
+              console.warn(`不支持后续属性声明`)
+              sameIdName = [sameIdName[0]]
+            }
+            let importNode = sameIdName[0]
+            let importPropsTypeNode
+            if (importNode.type === 'TSTypeAliasDeclaration'
+              && importNode.typeAnnotation.type === 'TSTypeLiteral'
+            ) {
+              importPropsTypeNode = importNode.typeAnnotation
+            } else {
+              importPropsTypeNode = (importNode as TSInterfaceDeclaration).body
+            }
+            const definePropsLoc = {
+              start: definePropsNode[0].typeParameters.params[0].start,
+              end: definePropsNode[0].typeParameters.params[0].end
+            }
+            clearComment(importPropsTypeNode)
+            let codes = new CodeGenerator(importPropsTypeNode, { minified: true }).generate().code
+            const ss = addINterface(code, definePropsLoc.start, definePropsLoc.end, scriptStart, 0, codes)
+
+            afterReplace = ss.toString()
+            break;
+          }
+        }
+        // console.log(cache)
+      } catch (err: unknown) {
+        const error = (err as Error)
+        console.warn(`${error.message} ${error.stack} ${error.name}`)
+        return doNothing()
+      }
+    } else {
+      try {
+        const node = imported[0]
+        let rpath = ''
+        if ((node as ImportDeclarationInfo).source.value.startsWith('@')) {
+          rpath = replaceAlias((node as ImportDeclarationInfo).source.value, alias)
         } else {
-          console.warn('import error')
-          return doNothing()
-          // throw new Error('import error')
+          rpath = path.resolve(
+            cpath,
+            (node as ImportDeclarationInfo).source.value
+          )
         }
 
-        let importPropsTypeNode
-        if (
+        let content
+        if (fileExists(`${rpath}.ts`)) {
+          content = getFileContent(`${rpath}.ts`)
+        } else if (fileExists(`${rpath}.d.ts`)) {
+          content = getFileContent(`${rpath}.d.ts`)
+        } else {
+          console.warn('The import file is not exit.')
+          return doNothing()
+          // throw new Error('The import file is not exit.')
+        }
+        const result = _parse(content, {
+          plugins: [...(plugins ?? [])],
+          sourceType: 'module',
+        }).program
+        /**
+         * export interface Foo {
+         *    name: string
+         * }
+         * 
+         * Or
+         * 
+         * export default interface Foo {
+         *    name: string
+         * }
+         */
+        const exportNodes = result.body.filter(
+          (n) => n.type === 'ExportNamedDeclaration' && n.exportKind === 'type' || n.type === 'ExportDefaultDeclaration' && n.exportKind === 'value' && (n.declaration as unknown as TSInterfaceDeclaration).type === 'TSInterfaceDeclaration'
+        )
+
+        // only find the ExportDefaultDeclaration node
+        const exportDefault = result.body.filter(
+          (n) => n.type === 'ExportDefaultDeclaration'
+        )
+
+        if (exportDefault.length > 1) {
+          // if the export type is over 1, do't process it
+          console.warn(`export default type must be one!`)
+          return doNothing()
+          // throw new Error(`export default must be one!`)
+        }
+
+        /**
+         * interface Foo {
+         * 
+         * }
+         * 
+         * export default Foo
+         */
+        const exportDefaultIdentifier = result.body.filter(
+          (n) => n.type === 'ExportDefaultDeclaration' && n.exportKind === 'value' && (n.declaration as unknown as Identifier).type === 'Identifier'
+        )
+
+        // import and local name are not equal, this means local name is unique so change
+        // the type defined name to local name
+        const copyImportNode: ImportDeclarationInfo = JSON.parse(JSON.stringify(node))
+        const importTypeSpecifiers = copyImportNode.specifiers.filter(
+          (p) => p.local.name === definedPropsTypeParametersName
+        )[0]
+        if (!importTypeSpecifiers) {
+          return doNothing()
+        }
+        // such as import { Foo as Test} from './app
+        // Foo is importedName
+        // Text is LocalName
+        const localName = importTypeSpecifiers.local.name
+        let importedName = ''
+        if (importTypeSpecifiers.type === 'ImportSpecifier') {
+          if (importTypeSpecifiers.imported.type === 'Identifier') {
+            importedName = importTypeSpecifiers.imported.name
+          }
+        }
+
+        if (exportNodes.length === 0 && exportDefaultIdentifier.length === 1) {
+          const exportDefaultIdentifierName = (exportDefaultIdentifier[0] as any).declaration.name
+          const exportDefaultIdentifierValue = result.body.filter(n => n.type === 'TSInterfaceDeclaration' && n.id.name === exportDefaultIdentifierName)
+          if (exportDefaultIdentifierValue.length) {
+            /**
+             * interface Foo {
+             * }
+             * interface Foo {
+             * }
+             * export default Foo
+             * 
+             * get the first one
+             */
+            if (exportDefaultIdentifierValue.length > 1) {
+              console.warn(`don't support Subsequent property declarations, 不支持后续属性声明`)
+            }
+            (exportDefaultIdentifierValue[0] as TSInterfaceDeclaration).id.name = localName;
+            exportNodes.push(JSON.parse(JSON.stringify(exportDefaultIdentifier[0])));
+            (exportNodes[0] as any).declaration = exportDefaultIdentifierValue[0];
+          }
+        }
+
+        let match = exportNodes.filter(
+          n => importedName ?
+            (((n as ExportNamedDeclaration).declaration) as any).id.name === importedName :
+            (((n as ExportNamedDeclaration).declaration) as any).id.name === localName
+        )
+
+        if (match.length > 1) {
+          console.warn(`don't support Subsequent property declarations`)
+          console.warn(`不支持后续属性声明`)
+          match = [match[0]]
+        }
+        if (match.length) {
+          const importNode = match[0]
+
+          if (copyImportNode.specifiers.length > 1) {
+            copyImportNode.specifiers = copyImportNode.specifiers.filter(
+              (p) => p.local.name !== definedPropsTypeParametersName
+            )
+          } else if (copyImportNode.specifiers.length === 1) {
+            const specifier = copyImportNode.specifiers.find(
+              (p) => p.local.name === definedPropsTypeParametersName
+            );
+            if ((specifier as ImportSpecifier).imported) {
+              // if ('name' in ((specifier as ImportSpecifier).imported as Identifier)) {
+              ((specifier as ImportSpecifier).imported as Identifier).name = ''
+              specifier.local.name = ''
+              // }
+            } else {
+              // such as import Foo from './app
+              copyImportNode.specifiers = copyImportNode.specifiers.filter(
+                (p) => p.local.name !== definedPropsTypeParametersName
+              )
+            }
+          } else {
+            console.warn('import error')
+            return doNothing()
+            // throw new Error('import error')
+          }
+
+          let importPropsTypeNode
+          if (
             ((importNode.type === 'ExportNamedDeclaration' || importNode.type === 'ExportDefaultDeclaration') &&
-            importNode.declaration &&
-              (importNode.declaration.type === "TSInterfaceDeclaration" || 
-                (importNode.declaration.type === 'TSTypeAliasDeclaration' 
-                && importNode.declaration.typeAnnotation.type === 'TSTypeLiteral')
+              importNode.declaration &&
+              (importNode.declaration.type === "TSInterfaceDeclaration" ||
+                (importNode.declaration.type === 'TSTypeAliasDeclaration'
+                  && importNode.declaration.typeAnnotation.type === 'TSTypeLiteral')
               )
             )
           ) {
-          // importNode.declaration TSInterfaceDeclaration
-          importNode.declaration.id.name = localName
-          if (importNode.declaration.type === 'TSTypeAliasDeclaration' 
+            // importNode.declaration TSInterfaceDeclaration
+            importNode.declaration.id.name = localName
+            if (importNode.declaration.type === 'TSTypeAliasDeclaration'
               && importNode.declaration.typeAnnotation.type === 'TSTypeLiteral'
             ) {
-            importPropsTypeNode = importNode.declaration.typeAnnotation
+              importPropsTypeNode = importNode.declaration.typeAnnotation
+            } else {
+              importPropsTypeNode = (importNode.declaration as TSInterfaceDeclaration).body
+            }
           } else {
-            importPropsTypeNode = (importNode.declaration as TSInterfaceDeclaration).body
+            // such as importNode.declaration.type is TSTypeAliasDeclaration
+            return doNothing()
           }
-        } else {
-          // such as importNode.declaration.type is TSTypeAliasDeclaration
-          return doNothing()
-        }
 
-        const removeTypeImportCode = getRemoveTypeImportCode(copyImportNode)
-        const s = removeTypeImport(node, code, removeTypeImportCode, scriptStart)
-        const gap = getGap(node, removeTypeImportCode)
-        const definePropsLoc = {
-          start: definePropsNode[0].typeParameters.params[0].start,
-          end: definePropsNode[0].typeParameters.params[0].end
-        }
-        clearComment(importPropsTypeNode)
-        let codes = new CodeGenerator(importPropsTypeNode, { minified: true }).generate().code
-        const ss = addINterface(s, definePropsLoc.start, definePropsLoc.end, scriptStart, gap, codes)
+          const removeTypeImportCode = getRemoveTypeImportCode(copyImportNode)
+          const s = removeTypeImport(node, code, removeTypeImportCode, scriptStart)
+          const gap = getGap(node, removeTypeImportCode)
+          const definePropsLoc = {
+            start: definePropsNode[0].typeParameters.params[0].start,
+            end: definePropsNode[0].typeParameters.params[0].end
+          }
+          clearComment(importPropsTypeNode)
+          let codes = new CodeGenerator(importPropsTypeNode, { minified: true }).generate().code
+          const ss = addINterface(s, definePropsLoc.start, definePropsLoc.end, scriptStart, gap, codes)
 
-        afterReplace = ss.toString()
+          afterReplace = ss.toString()
+        }
+      } catch (err: unknown) {
+        const error = (err as Error)
+        console.warn(`${error.message} ${error.stack} ${error.name}`)
+        return doNothing()
+        // throw new Error(`${error.message} ${error.stack} ${error.name}`)
       }
-    } catch (err: unknown) {
-      const error = (err as Error)
-      console.warn(`${error.message} ${error.stack} ${error.name}`)
-      return doNothing()
-      // throw new Error(`${error.message} ${error.stack} ${error.name}`)
     }
   }
   return afterReplace
@@ -567,7 +751,7 @@ function clearComment(node) {
 }
 
 export const errors: (CompilerError | SyntaxError)[] = []
-export const parseSFC = (code: string, id: string, alias: { [x: string]: string }) => {
+export const parseSFC = async (code: string, id: string, alias: { [x: string]: string }, configPath: string) => {
   const ast = parse(code, {
     filename: id,
   })
@@ -576,7 +760,7 @@ export const parseSFC = (code: string, id: string, alias: { [x: string]: string 
     return doNothing()
   }
 
-  let afterReplace = replaceCode(script, code, id, alias)
+  let afterReplace = await replaceCode(script, code, id, alias, configPath)
 
   const { descriptor } = parse(afterReplace ? afterReplace : code, {
     filename: id,
