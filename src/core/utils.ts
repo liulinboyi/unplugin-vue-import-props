@@ -282,7 +282,7 @@ function replaceAlias(cpath: string, alias) {
   return cpath
 }
 
-function getRootTypes(configPath: string) {
+function getRootTypes(configPath: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
     // has no import type maybe config tsconfig.json's compilerOptions.typeRoots add global type
     if (configPath) {
@@ -453,7 +453,7 @@ export async function replaceCode(script, code, id, alias, configPath) {
           (p) => p.local.name === definedPropsTypeParametersName
         )
     )
-    let rootTypes
+    let rootTypes: string[]
     // in the definedProps<Foo>(), the Foo has one import like import { Foo } from './index'
     if (imported.length > 1) {
       console.warn(`in the definedProps<${definedPropsTypeParametersName}>(), ${definedPropsTypeParametersName} is double import!`)
@@ -481,12 +481,15 @@ export async function replaceCode(script, code, id, alias, configPath) {
           hash: string;
           ast: Program;
         }> = []
+        // filter delete file ast, after filter cache file path must be exist
+        cache = cache.filter(n => rootTypes.includes(n.path))
         for (let n of rootTypes) {
           let content = getFileContent(n)
           let curCache = cache.filter(item => item.path === n)
 
           if (curCache.length) {
             // file content is change
+            // update ast
             if (curCache[0].hash !== content) {
               const result = _parse(content, {
                 plugins: [...(plugins ?? [])],
@@ -496,6 +499,7 @@ export async function replaceCode(script, code, id, alias, configPath) {
               curCache[0].ast = result
             }
           } else {
+            // add file ast
             const result = _parse(content, {
               plugins: [...(plugins ?? [])],
               sourceType: 'module',
