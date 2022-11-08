@@ -1,8 +1,8 @@
 # unplugin-vue-import-props
 
-Add import define props type support for Vue script-setup and lang is typescript
+Add import define props type support for Vue script-setup and lang is typescript，now support global types.
 
-在Vue3中使用此款插件，传递给 defineProps 的泛型参数可以是一个导入的类型
+在Vue3中使用此款插件，传递给 defineProps 的泛型参数可以是一个导入的类型，现在已支持全局类型。
 
 ## Usage
 
