@@ -66,6 +66,23 @@ defineProps<{name:string;}>();
 npm i unplugin-vue-import-props -D
 ```
 
+If you want use `typeRoot` to set global types path, please add configPath like:
+
+```ts
+// vite.config.ts
+import ImportProps from 'unplugin-vue-import-props/vite'
+import Vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
+
+export default defineConfig({
+  plugins: [Vue(), ImportProps({
+      configPath: resolve(__dirname, './tsconfig.json')
+  })],
+})
+```
+
+now you can use global types.
+
 <details>
 <summary>Vite</summary><br>
 
