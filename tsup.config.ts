@@ -9,4 +9,5 @@ export default defineConfig({
   splitting: true,
   dts: !isDev,
   watch: isDev,
+  shims: true, // https://tsup.egoist.dev/#inject-cjs-and-esm-shims
 })
