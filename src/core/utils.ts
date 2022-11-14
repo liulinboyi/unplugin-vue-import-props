@@ -266,11 +266,11 @@ function processWithDefaults(node: Node) {
 }
 
 function replaceAlias(cpath: string, alias) {
-  // alias only support start with `@` Syntax
-  const entry = Object.keys(alias).filter(n => n.startsWith('@'))
+  // alias only support Object params array params is not support now.
+  const entry = Object.keys(alias)
   if (entry.length) {
     for (let n of entry) {
-      // n such as @foo
+      // n such as @foo , ~foo and so on
       // alias[n] is path
       if (cpath.startsWith(n)) {
         let tempPath = cpath.replace(n, '')
@@ -557,7 +557,11 @@ export async function replaceCode(script, code, id, alias, configPath) {
       try {
         const node = imported[0]
         let rpath = ''
-        if ((node as ImportDeclarationInfo).source.value.startsWith('@')) {
+        if (
+          (node as ImportDeclarationInfo).source.value && alias &&
+          !Array.isArray(alias) /* alias only support Object params array params is not support now. */ &&
+          Object.keys(alias).length
+        ) {
           rpath = replaceAlias((node as ImportDeclarationInfo).source.value, alias)
         } else {
           rpath = path.resolve(
