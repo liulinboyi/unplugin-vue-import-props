@@ -329,29 +329,11 @@ function getRootTypes(configPath: string): Promise<string[]> {
     }
     cachePath = path.resolve(cachePath, './.unplugin-vue-import-props-cache.json')
     fs.writeFileSync(cachePath, JSON.stringify(config))
-    let createProgram = ts.createSemanticDiagnosticsBuilderProgram;
-    let host = ts.createWatchCompilerHost(cachePath, {}, ts.sys, createProgram);
-    // let origCreateProgram = host.createProgram;
-    let create = function (rootNames, options, host, oldProgram) {
-      resolve(rootNames)
-      // console.log("** We're about to create the program! **");
-      // let program = origCreateProgram(rootNames, options, host, oldProgram);
-      // program.getSourceFiles();
-      // return program;
-      return null
-    };
-    host.createProgram = create;
-    // let origPostProgramCreate = host.afterProgramCreate;
-    // host.afterProgramCreate = function (program) {
-    //     console.log("** We finished making the program! **");
-    //     origPostProgramCreate(program);
-    // };
-    // `createWatchProgram` creates an initial program, watches files, and updates
-    // the program over time.
-    ts.createWatchProgram(host);
-    // function reportDiagnostic(diagnostic) {
-    //   console.error("Error", diagnostic.code, ":", ts.flattenDiagnosticMessageText(diagnostic.messageText, formatHost.getNewLine()));
-    // }
+
+    type Assign = any & {onUnRecoverableConfigFileDiagnostic: any}
+    // TODO
+    let res = ts.getParsedCommandLineOfConfigFile(cachePath, {}, ts.createCompilerHost({}) as Assign)
+    resolve(res.fileNames)
   })
 }
 
